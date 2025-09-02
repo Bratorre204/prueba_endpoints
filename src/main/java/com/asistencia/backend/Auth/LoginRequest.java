@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LoginRequest {
-    String email;
-    String password;
+    String correo;
+    String contrasena;
+    String latitud;
 }

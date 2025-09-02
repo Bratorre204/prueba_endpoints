@@ -1,4 +1,4 @@
-package com.asistencia.backend.User;
+package com.asistencia.backend.model;
 
 
 import jakarta.persistence.*;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import java.net.UnknownServiceException;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -18,28 +18,33 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name="usuarios", uniqueConstraints = {@UniqueConstraint(columnNames = {"email"})})
+@Table(name="usuarios", uniqueConstraints = {@UniqueConstraint(columnNames = {"correo"})})
 public class Usuario implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
-    String firstName;
-    String lastName;
+    Long id_usuario;
+    String nombre;
+    String apellido;
     @Column(nullable = false)
-    String email;
-    String password;
-    String carrera;
+    String correo;
+    String contrasena;
+    String programa;
     @Enumerated(EnumType.STRING)
-    Role role;
+    Role rol;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
+        return List.of(new SimpleGrantedAuthority(rol.name()));
     }
 
     @Override
     public String getUsername() {
-    return getEmail();
+    return getCorreo();
+    }
+
+    @Override
+    public String getPassword() {
+        return getContrasena();
     }
 
     @Override

@@ -1,14 +1,18 @@
 package com.asistencia.backend.Auth;
 
-import com.asistencia.backend.User.Role;
-import com.asistencia.backend.User.UserRepository;
-import com.asistencia.backend.User.Usuario;
+import com.asistencia.backend.model.Role;
+import com.asistencia.backend.repository.AuditoriaRepository;
+import com.asistencia.backend.repository.UserRepository;
+import com.asistencia.backend.model.Usuario;
+import com.asistencia.backend.service.AuditoriaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.asistencia.backend.jwt.JwtService;
+import org.springframework.security.authentication.BadCredentialsException;
 
 
 @Service
@@ -18,44 +22,54 @@ public class AuthService {
     private  final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final AuditoriaService auditoriaService;
 
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        String latitud = request.getLatitud();
 
-        Usuario usuario = userRepository.findByEmail(request.getEmail())
-                .orElseThrow();
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getCorreo(),
+                            request.getContrasena()
+                    )
+            );
 
-        String token = jwtService.generateToken(usuario);
+            Usuario usuario = userRepository.findByCorreo(request.getCorreo())
+                    .orElseThrow();
 
-        return AuthResponse.builder()
-                .token(token)
-                .lastName(usuario.getLastName())
-                .firstName(usuario.getFirstName())
-                .email(usuario.getEmail())
-                .carrera(usuario.getCarrera())
-                .build();
+            String token = jwtService.generateToken(usuario);
+            auditoriaService.auditSuccessfulLogin(latitud, usuario);
+
+            return AuthResponse.builder()
+                    .token(token)
+                    .nombre(usuario.getNombre())
+                    .apellido(usuario.getApellido())
+                    .correo(usuario.getCorreo())
+                    .programa(usuario.getPrograma())
+                    .build();
+        } catch (BadCredentialsException e) {
+            auditoriaService.auditFailedLogin(latitud);
+            throw new BadCredentialsException("Correo o contraseña inválidos");
+        }
     }
+
 
     public AuthResponse register(RegisterRequest request) {
         Usuario usuario = Usuario.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .carrera(request.getCarrera())
-                .role(Role.USER)
+                .nombre(request.getNombre())
+                .apellido(request.getApellido())
+                .correo(request.getCorreo())
+                .contrasena(passwordEncoder.encode(request.getContrasena()))
+                .programa(request.getPrograma())
+                .rol(Role.USER)
                 .build();
 
         userRepository.save(usuario);
         return AuthResponse.builder()
                 .token(jwtService.generateToken(usuario))
-                .email(usuario.getEmail())
+                .correo(usuario.getCorreo())
                 .build();
 
     }

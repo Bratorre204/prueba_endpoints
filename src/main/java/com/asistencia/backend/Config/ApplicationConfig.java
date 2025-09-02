@@ -1,7 +1,7 @@
 package com.asistencia.backend.Config;
 
 
-import com.asistencia.backend.User.UserRepository;
+import com.asistencia.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,8 +41,8 @@ public class ApplicationConfig {
 
     @Bean
     public UserDetailsService userDetailService() {
-        return email -> userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return correo -> userRepository.findByCorreo(correo)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no existe"));
     }
 }
 
