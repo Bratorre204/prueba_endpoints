@@ -1,14 +1,11 @@
 package com.asistencia.backend.Auth;
 
-import com.asistencia.backend.service.AuditoriaService;
+import com.asistencia.backend.service.AuthService;
+import com.asistencia.backend.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -16,25 +13,38 @@ import java.util.Map;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
     private final AuthService authService;
 
-
-    @PostMapping(value = "login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    @PostMapping("login")
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody LoginRequest request) {
         try {
-            AuthResponse response = authService.login(request);
+            AuthResponse data = authService.login(request);
+            ApiResponse<AuthResponse> response = ApiResponse.<AuthResponse>builder()
+                    .status(true)
+                    .message("Login exitoso!")
+                    .data(data)
+                    .build();
             return ResponseEntity.ok(response);
 
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("mensaje", e.getMessage()));
+            ApiResponse<AuthResponse> errorResponse = ApiResponse.<AuthResponse>builder()
+                    .status(false)
+                    .message(e.getMessage())
+                    .data(null)
+                    .build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
         }
-
     }
 
-
-    @PostMapping(value = "register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request){
-        return ResponseEntity.ok(authService.register(request));
+    @PostMapping("register")
+    public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody RegisterRequest request) {
+        AuthResponse data = authService.register(request);
+        ApiResponse<AuthResponse> response = ApiResponse.<AuthResponse>builder()
+                .status(true)
+                .message("Registro exitoso!")
+                .data(data)
+                .build();
+        return ResponseEntity.ok(response);
     }
 }

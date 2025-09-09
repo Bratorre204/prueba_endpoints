@@ -1,0 +1,21 @@
+package com.asistencia.backend.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/estudiantes")
+@RequiredArgsConstructor
+public class EstudianteController {
+
+    // Este endpoint es una prueba. Solo puede ser accedido por un ESTUDIANTE.
+    @GetMapping("/prueba")
+    public ResponseEntity<String> pruebaEstudiante(Authentication authentication) {
+        String nombreUsuario = authentication.getName();
+        return ResponseEntity.ok("Bienvenido, estudiante " + nombreUsuario + ". ¡Autorización verificada!");
+    }
+}

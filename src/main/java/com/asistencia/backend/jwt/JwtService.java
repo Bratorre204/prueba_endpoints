@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
@@ -21,6 +23,13 @@ public class JwtService {
 
     public String generateToken(UserDetails usuario) {
         Map<String, Object> claims = new HashMap<>();
+
+        // Obtiene los roles del usuario a través de sus 'GrantedAuthorities' y los agrega
+        // como un campo ('claim') llamado "roles" en el payload del token JWT.
+        claims.put("roles", usuario.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList()));
+
         return createToken(claims, usuario.getUsername());
     }
 

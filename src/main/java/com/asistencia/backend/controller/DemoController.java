@@ -1,4 +1,4 @@
-package com.asistencia.backend.Demo;
+package com.asistencia.backend.controller;
 
 
 import lombok.RequiredArgsConstructor;

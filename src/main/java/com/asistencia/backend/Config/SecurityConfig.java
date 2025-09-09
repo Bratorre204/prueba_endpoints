@@ -12,15 +12,13 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-
-@Configuration
 @RequiredArgsConstructor
+@Configuration
 public class SecurityConfig {
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AuthenticationProvider authProvider;
-
-
-
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -28,11 +26,15 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authRequest -> authRequest
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/api/cursos/**").hasRole("PROFESOR")
+                        .requestMatchers("/api/estudiantes/**").hasRole("ESTUDIANTE")
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(exception ->
+                        exception.accessDeniedHandler(accessDeniedHandler)
+                )
                 .sessionManagement(sessionManager ->
-                        sessionManager
-                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        sessionManager.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authProvider)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
