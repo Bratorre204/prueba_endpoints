@@ -5,8 +5,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -20,20 +18,20 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 public class AuditoriaEntidad {
     @CreatedDate
-    @Column(name = "create_date", updatable = false)
-    private LocalDateTime createDate;
+    @Column(name = "fecha_creacion", updatable = false)
+    private LocalDateTime fechaCreacion;
 
     @CreatedBy
-    @Column(name = "create_user", updatable = false)
-    private String createUser;
+    @Column(name = "creado_por", updatable = false)
+    private String creadoPor;
 
     @LastModifiedDate
-    @Column(name = "update_date")
-    private LocalDateTime updateDate;
+    @Column(name = "fecha_modificacion")
+    private LocalDateTime fechaModificacion;
 
     @LastModifiedBy
-    @Column(name = "update_user")
-    private String updateUser;
+    @Column(name = "modificado_por")
+    private String modificadoPor;
 
     @Column(name = "delete_logic")
     private Boolean deleteLogic = false;

@@ -31,6 +31,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Skip JWT processing for public endpoints
+        String requestURI = request.getRequestURI();
+        if (isPublicEndpoint(requestURI)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String token = getTokenFromRequest(request);
 
         if (token != null) {
@@ -50,6 +57,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPublicEndpoint(String requestURI) {
+        return requestURI.startsWith("/auth/") ||
+               requestURI.startsWith("/api/sesiones/") ||
+               requestURI.startsWith("/api/asistencia/") ||
+               requestURI.startsWith("/api/cursos/") ||
+               requestURI.startsWith("/api/asignaturas/") ||
+               requestURI.startsWith("/api/reportes/") ||
+               requestURI.startsWith("/api/usuarios/");
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {

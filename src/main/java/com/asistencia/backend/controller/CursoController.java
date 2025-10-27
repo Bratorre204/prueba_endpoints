@@ -1,176 +1,176 @@
 package com.asistencia.backend.controller;
 
-import com.asistencia.backend.dto.CursoRequest;
-import com.asistencia.backend.dto.CursoResponse;
+import com.asistencia.backend.dto.*;
+import com.asistencia.backend.model.Curso;
+import com.asistencia.backend.model.UsuarioCurso;
 import com.asistencia.backend.response.ApiResponse;
 import com.asistencia.backend.service.CursoService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/cursos")
+@CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class CursoController {
-
-    @Autowired
-    private CursoService cursoService;
-
-    @PostMapping
-    public ResponseEntity<ApiResponse<CursoResponse>> crearCurso(
-            @Valid @RequestBody CursoRequest request,
-            Authentication authentication) {
-        try {
-            CursoResponse curso = cursoService.crearCurso(request, authentication.getName());
-
-            ApiResponse<CursoResponse> response = ApiResponse.<CursoResponse>builder()
-                    .status(true)
-                    .message("Curso creado exitosamente")
-                    .data(curso)
-                    .build();
-
-            return ResponseEntity.status(201).body(response);
-
-        } catch (Exception e) {
-            ApiResponse<CursoResponse> errorResponse = ApiResponse.<CursoResponse>builder()
-                    .status(false)
-                    .message("Error al crear curso: " + e.getMessage())
-                    .data(null)
-                    .build();
-
-            return ResponseEntity.status(400).body(errorResponse);
-        }
-    }
-
-    @GetMapping("/mis-cursos")
-    public ResponseEntity<ApiResponse<List<CursoResponse>>> obtenerMisCursos(Authentication authentication) {
-        try {
-            List<CursoResponse> cursos = cursoService.obtenerCursosPorProfesor(authentication.getName());
-
-            ApiResponse<List<CursoResponse>> response = ApiResponse.<List<CursoResponse>>builder()
-                    .status(true)
-                    .message("Cursos obtenidos exitosamente")
-                    .data(cursos)
-                    .build();
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            ApiResponse<List<CursoResponse>> errorResponse = ApiResponse.<List<CursoResponse>>builder()
-                    .status(false)
-                    .message("Error: " + e.getMessage())
-                    .data(null)
-                    .build();
-
-            return ResponseEntity.status(400).body(errorResponse);
-        }
-    }
-
+    
+    private final CursoService cursoService;
+    
+    /**
+     * GET /api/cursos
+     * Listar todos los cursos
+     */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CursoResponse>>> obtenerTodosCursos(
-            @RequestParam(required = false) String buscar) {
+    public ResponseEntity<?> getAllCursos(
+            @RequestParam(required = false) String periodo,
+            @RequestParam(required = false) String turno,
+            @PageableDefault(size = 50) Pageable pageable) {
         try {
-            List<CursoResponse> cursos;
-
-            cursos = cursoService.obtenerTodosCursosActivos();
-
-            ApiResponse<List<CursoResponse>> response = ApiResponse.<List<CursoResponse>>builder()
-                    .status(true)
-                    .message("Cursos obtenidos exitosamente")
-                    .data(cursos)
-                    .build();
-
-            return ResponseEntity.ok(response);
-
+            Page<Curso> cursos = cursoService.getAllCursos(periodo, turno, pageable);
+            List<CursoListaResponse> cursosResponse = cursoService.convertirACursoListaResponse(cursos.getContent());
+            return ResponseEntity.ok(cursosResponse);
         } catch (Exception e) {
-            ApiResponse<List<CursoResponse>> errorResponse = ApiResponse.<List<CursoResponse>>builder()
-                    .status(false)
-                    .message("Error: " + e.getMessage())
-                    .data(null)
-                    .build();
-
-            return ResponseEntity.status(500).body(errorResponse);
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
         }
     }
-
+    
+    /**
+     * GET /api/cursos/{id}
+     * Obtener detalle de un curso
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CursoResponse>> obtenerCurso(@PathVariable Long id) {
+    public ResponseEntity<?> getCurso(@PathVariable Long id) {
         try {
-            CursoResponse curso = cursoService.obtenerCursoPorId(id);
-
-            ApiResponse<CursoResponse> response = ApiResponse.<CursoResponse>builder()
-                    .status(true)
-                    .message("Curso encontrado")
-                    .data(curso)
-                    .build();
-
-            return ResponseEntity.ok(response);
-
+            Curso curso = cursoService.getCursoById(id);
+            CursoListaResponse cursoResponse = cursoService.convertirACursoListaResponse(curso);
+            return ResponseEntity.ok(cursoResponse);
         } catch (Exception e) {
-            ApiResponse<CursoResponse> errorResponse = ApiResponse.<CursoResponse>builder()
-                    .status(false)
-                    .message("Error: " + e.getMessage())
-                    .data(null)
-                    .build();
-
-            return ResponseEntity.status(404).body(errorResponse);
+            return ResponseEntity.notFound().build();
         }
     }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<CursoResponse>> actualizarCurso(
-            @PathVariable Long id,
-            @Valid @RequestBody CursoRequest request,
-            Authentication authentication) {
+    
+    /**
+     * GET /api/cursos/{id}/estudiantes
+     * Listar estudiantes inscritos en un curso
+     */
+    @GetMapping("/{id}/estudiantes")
+    public ResponseEntity<?> getEstudiantesCurso(@PathVariable Long id) {
         try {
-            CursoResponse curso = cursoService.actualizarCurso(id, request, authentication.getName());
-
-            ApiResponse<CursoResponse> response = ApiResponse.<CursoResponse>builder()
-                    .status(true)
-                    .message("Curso actualizado exitosamente")
-                    .data(curso)
-                    .build();
-
-            return ResponseEntity.ok(response);
-
+            List<UsuarioDTO> estudiantes = cursoService.getEstudiantesPorCurso(id);
+            return ResponseEntity.ok(estudiantes);
         } catch (Exception e) {
-            ApiResponse<CursoResponse> errorResponse = ApiResponse.<CursoResponse>builder()
-                    .status(false)
-                    .message("Error: " + e.getMessage())
-                    .data(null)
-                    .build();
-
-            return ResponseEntity.status(400).body(errorResponse);
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
         }
     }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> eliminarCurso(
-            @PathVariable Long id,
-            Authentication authentication) {
+    
+    /**
+     * GET /api/cursos/profesor/{idProfesor}
+     * Cursos asignados a un profesor
+     */
+    @GetMapping("/profesor/{idProfesor}")
+    public ResponseEntity<?> getCursosProfesor(
+            @PathVariable Long idProfesor,
+            @RequestParam(required = false) String periodo) {
         try {
-            cursoService.eliminarCurso(id, authentication.getName());
-
-            ApiResponse<Void> response = ApiResponse.<Void>builder()
-                    .status(true)
-                    .message("Curso eliminado exitosamente")
-                    .data(null)
-                    .build();
-
-            return ResponseEntity.ok(response);
-
+            List<Curso> cursos = cursoService.getCursosPorProfesor(idProfesor, periodo);
+            List<CursoListaResponse> cursosResponse = cursoService.convertirACursoListaResponse(cursos);
+            return ResponseEntity.ok(cursosResponse);
         } catch (Exception e) {
-            ApiResponse<Void> errorResponse = ApiResponse.<Void>builder()
-                    .status(false)
-                    .message("Error: " + e.getMessage())
-                    .data(null)
-                    .build();
-
-            return ResponseEntity.status(400).body(errorResponse);
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
         }
-
+    }
+    
+    /**
+     * GET /api/cursos/estudiante/{idEstudiante}
+     * Cursos en los que está inscrito un estudiante
+     */
+    @GetMapping("/estudiante/{idEstudiante}")
+    public ResponseEntity<?> getCursosEstudiante(
+            @PathVariable Long idEstudiante,
+            @RequestParam(required = false) String periodo) {
+        try {
+            List<Curso> cursos = cursoService.getCursosPorEstudiante(idEstudiante, periodo);
+            List<CursoListaResponse> cursosResponse = cursoService.convertirACursoListaResponse(cursos);
+            return ResponseEntity.ok(cursosResponse);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+    
+    /**
+     * POST /api/cursos
+     * Crear un nuevo curso
+     */
+    @PostMapping
+    public ResponseEntity<?> crearCurso(@RequestBody @Valid CrearCursoRequest request) {
+        try {
+            Curso curso = cursoService.crearCurso(request);
+            CursoCreadoResponse cursoResponse = cursoService.convertirACursoCreadoResponse(curso);
+            return ResponseEntity.ok(new ApiResponse(true, "Curso creado exitosamente", cursoResponse));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+    
+    /**
+     * POST /api/cursos/{id}/inscribir
+     * Inscribir estudiante en un curso
+     */
+    @PostMapping("/{id}/inscribir")
+    public ResponseEntity<?> inscribirEstudiante(
+            @PathVariable Long id,
+            @RequestBody @Valid InscribirEstudianteRequest request) {
+        try {
+            UsuarioCurso inscripcion = cursoService.inscribirEstudiante(id, request);
+            return ResponseEntity.ok(new ApiResponse(true, "Estudiante inscrito", inscripcion));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+    
+    /**
+     * GET /api/cursos/periodos
+     * Obtener períodos disponibles
+     */
+    @GetMapping("/periodos")
+    public ResponseEntity<?> getPeriodosDisponibles() {
+        try {
+            List<String> periodos = cursoService.getPeriodosDisponibles();
+            return ResponseEntity.ok(periodos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
+        }
+    }
+    
+    /**
+     * GET /api/cursos/asignatura/{idAsignatura}
+     * Cursos de una asignatura específica
+     */
+    @GetMapping("/asignatura/{idAsignatura}")
+    public ResponseEntity<?> getCursosPorAsignatura(
+            @PathVariable Long idAsignatura,
+            @RequestParam(required = false) String periodo) {
+        try {
+            List<Curso> cursos = cursoService.getCursosPorAsignatura(idAsignatura, periodo);
+            List<CursoListaResponse> cursosResponse = cursoService.convertirACursoListaResponse(cursos);
+            return ResponseEntity.ok(cursosResponse);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse(false, e.getMessage(), null));
+        }
     }
 }

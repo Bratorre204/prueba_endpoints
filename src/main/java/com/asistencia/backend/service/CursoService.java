@@ -1,163 +1,213 @@
 package com.asistencia.backend.service;
 
-import com.asistencia.backend.dto.CursoRequest;
-import com.asistencia.backend.dto.CursoResponse;
-import com.asistencia.backend.model.RolNombre;
+import com.asistencia.backend.dto.*;
 import com.asistencia.backend.model.*;
-import com.asistencia.backend.model.Usuario;
-import com.asistencia.backend.repository.CursoRepository;
-import com.asistencia.backend.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.asistencia.backend.repository.*;
+import com.asistencia.backend.util.CodigoCursoGenerator;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class CursoService {
-
-    @Autowired
-    private CursoRepository cursoRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    public CursoResponse crearCurso(CursoRequest request, String profesorCorreo) {
-        // 1. Verificar que el usuario sea profesor
-        Usuario profesor = userRepository.findByCorreoAndDeleteLogicFalse(profesorCorreo)
-                .orElseThrow(() -> new RuntimeException("Profesor no encontrado"));
-
-        // Verificar que tenga rol de profesor
-        boolean esProfesor = profesor.getRoles().stream()
-                .anyMatch(rol -> rol.getNombre() == RolNombre.PROFESOR);
-
-        if (!esProfesor) {
-            throw new RuntimeException("Solo los profesores pueden crear cursos");
+    
+    private final CursoRepository cursoRepository;
+    private final AsignaturaRepository asignaturaRepository;
+    private final UserRepository usuarioRepository;
+    private final UsuarioCursoRepository usuarioCursoRepository;
+    private final CodigoCursoGenerator codigoCursoGenerator;
+    
+    public Page<Curso> getAllCursos(String periodo, String turno, Pageable pageable) {
+        return cursoRepository.findAllWithFilters(periodo, turno, pageable);
+    }
+    
+    public Curso getCursoById(Long id) {
+        return cursoRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+    }
+    
+    public Curso getCursoByCodigo(String codigo) {
+        return cursoRepository.findByCodigo(codigo)
+            .orElseThrow(() -> new RuntimeException("Curso con código " + codigo + " no encontrado"));
+    }
+    
+    public List<Curso> getCursosPorAñoYSemestre(Integer año, Integer semestre) {
+        return cursoRepository.findByAñoAndSemestre(año, semestre);
+    }
+    
+    public List<Curso> getCursosPorTurnoAñoYSemestre(String turno, Integer año, Integer semestre) {
+        return cursoRepository.findByTurnoAndAñoAndSemestre(turno, año, semestre);
+    }
+    
+    public List<UsuarioDTO> getEstudiantesPorCurso(Long idCurso) {
+        List<UsuarioCurso> inscripciones = usuarioCursoRepository.findByCursoIdAndEstadoActivo(idCurso);
+        
+        return inscripciones.stream()
+            .map(uc -> UsuarioDTO.builder()
+                .id(uc.getUsuario().getId())
+                .identificacion(uc.getUsuario().getIdentificacion())
+                .nombre(uc.getUsuario().getNombre() + " " + uc.getUsuario().getApellido())
+                .email(uc.getUsuario().getCorreo())
+                .build())
+            .collect(Collectors.toList());
+    }
+    
+    public List<Curso> getCursosPorProfesor(Long idProfesor, String periodo) {
+        if (periodo != null && !periodo.isEmpty()) {
+            return cursoRepository.findByProfesorIdAndPeriodo(idProfesor, periodo);
         }
-
-        // 2. Crear el curso
+        return cursoRepository.findByProfesorId(idProfesor);
+    }
+    
+    public List<Curso> getCursosPorEstudiante(Long idEstudiante, String periodo) {
+        if (periodo != null && !periodo.isEmpty()) {
+            return cursoRepository.findByEstudianteIdAndPeriodo(idEstudiante, periodo);
+        }
+        return cursoRepository.findByEstudianteId(idEstudiante);
+    }
+    
+    public List<Curso> getCursosPorAsignatura(Long idAsignatura, String periodo) {
+        if (periodo != null && !periodo.isEmpty()) {
+            return cursoRepository.findByAsignaturaIdAndPeriodo(idAsignatura, periodo);
+        }
+        return cursoRepository.findByAsignaturaId(idAsignatura);
+    }
+    
+    public Curso crearCurso(CrearCursoRequest request) {
+        // Obtener la asignatura
+        Asignatura asignatura = asignaturaRepository.findById(request.getIdAsignatura())
+            .orElseThrow(() -> new RuntimeException("Asignatura no encontrada"));
+        
+        // Obtener el profesor
+        Usuario profesor = usuarioRepository.findById(request.getIdProfesor())
+            .orElseThrow(() -> new RuntimeException("Profesor no encontrado"));
+        
+        // Generar código del curso
+        String codigoCurso = codigoCursoGenerator.generarCodigoCurso(
+            asignatura.getCodigo(),
+            request.getTurno(),
+            request.getAño(),
+            request.getSemestre(),
+            request.getSeccion()
+        );
+        
+        // Verificar si el código ya existe
+        if (cursoRepository.existsByCodigo(codigoCurso)) {
+            throw new RuntimeException("Ya existe un curso con el código: " + codigoCurso);
+        }
+        
+        // Generar período
+        String periodo = request.getAño() + "-" + request.getSemestre();
+        
         Curso curso = Curso.builder()
-                .nombre_curso(request.getNombre())
-                .descripcion_curso(request.getDescripcion())
-                .profesor(profesor)
-                .build();
-
-        // 3. Establecer auditoría
-        curso.setCreateUser(profesorCorreo);
-        curso.setCreateDate(LocalDateTime.now());
-        curso.setDeleteLogic(false);
-
-        // 4. Guardar curso
-        Curso savedCurso = cursoRepository.save(curso);
-
-        // 5. Convertir a DTO de respuesta
-        return convertToResponse(savedCurso);
+            .codigo(codigoCurso)
+            .descripcion(request.getDescripcion())
+            .nombre(request.getNombre())
+            .periodo(periodo)
+            .turno(request.getTurno())
+            .seccion(request.getSeccion())
+            .aula(request.getAula())
+            .horario(request.getHorario())
+            .año(request.getAño())
+            .semestre(request.getSemestre())
+            .asignatura(asignatura)
+            .profesor(profesor)
+            .build();
+        
+        return cursoRepository.save(curso);
     }
-
-    @Transactional(readOnly = true)
-    public List<CursoResponse> obtenerCursosPorProfesor(String profesorCorreo) {
-        Usuario profesor = userRepository.findByCorreoAndDeleteLogicFalse(profesorCorreo)
-                .orElseThrow(() -> new RuntimeException("Profesor no encontrado"));
-
-        List<Curso> cursos = cursoRepository.findByProfesorId(profesor.getId_usuario());
-
+    
+    public CursoCreadoResponse convertirACursoCreadoResponse(Curso curso) {
+        return CursoCreadoResponse.builder()
+            .id(curso.getId())
+            .codigo(curso.getCodigo())
+            .nombre(curso.getNombre())
+            .turno(curso.getTurno())
+            .seccion(curso.getSeccion())
+            .periodo(curso.getPeriodo())
+            .asignatura(CursoCreadoResponse.AsignaturaBasica.builder()
+                .id(curso.getAsignatura().getId())
+                .codigo(curso.getAsignatura().getCodigo())
+                .nombre(curso.getAsignatura().getNombre())
+                .build())
+            .profesor(CursoCreadoResponse.ProfesorBasico.builder()
+                .id(curso.getProfesor().getId())
+                .identificacion(curso.getProfesor().getIdentificacion())
+                .nombre(curso.getProfesor().getNombre())
+                .apellidos(curso.getProfesor().getApellido())
+                .build())
+            .build();
+    }
+    
+    public UsuarioCurso inscribirEstudiante(Long idCurso, InscribirEstudianteRequest request) {
+        Curso curso = getCursoById(idCurso);
+        
+        Usuario estudiante = usuarioRepository.findById(request.getIdEstudiante())
+            .orElseThrow(() -> new RuntimeException("Estudiante no encontrado"));
+        
+        // Verificar si ya está inscrito
+        if (usuarioCursoRepository.existsByUsuarioIdAndCursoId(request.getIdEstudiante(), idCurso)) {
+            throw new RuntimeException("El estudiante ya está inscrito en este curso");
+        }
+        
+        UsuarioCurso inscripcion = UsuarioCurso.builder()
+            .usuario(estudiante)
+            .curso(curso)
+            .estado("ACTIVO")
+            .observaciones(request.getObservaciones())
+            .build();
+        
+        return usuarioCursoRepository.save(inscripcion);
+    }
+    
+    public List<String> getPeriodosDisponibles() {
+        return cursoRepository.findDistinctPeriodos();
+    }
+    
+    public List<String> getTurnosDisponibles() {
+        return cursoRepository.findDistinctTurnos();
+    }
+    
+    public List<CursoListaResponse> convertirACursoListaResponse(List<Curso> cursos) {
         return cursos.stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+            .map(this::convertirACursoListaResponse)
+            .collect(Collectors.toList());
     }
-
-    @Transactional(readOnly = true)
-    public List<CursoResponse> obtenerTodosCursosActivos() {
-        List<Curso> cursos = cursoRepository.findAllActive();
-
-        return cursos.stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public CursoResponse obtenerCursoPorId(Long id) {
-        Curso curso = cursoRepository.findByIdAndActive(id)
-                .orElseThrow(() -> new RuntimeException("Curso no encontrado o no disponible"));
-
-        return convertToResponse(curso);
-    }
-
-    public CursoResponse actualizarCurso(Long id, CursoRequest request, String profesorCorreo) {
-        Curso curso = cursoRepository.findByIdAndActive(id)
-                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
-
-        // Verificar que sea el profesor del curso o admin
-        Usuario usuarioActual = userRepository.findByCorreoAndDeleteLogicFalse(profesorCorreo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        boolean esProfesorDelCurso = curso.getProfesor().getCorreo().equals(profesorCorreo);
-        boolean esAdmin = usuarioActual.getRoles().stream()
-                .anyMatch(rol -> rol.getNombre() == RolNombre.PROFESOR);
-
-        if (!esProfesorDelCurso && !esAdmin) {
-            throw new RuntimeException("Solo el profesor del curso puede modificarlo");
-        }
-
-        // Actualizar campos
-        curso.setNombre_curso(request.getNombre());
-        curso.setDescripcion_curso(request.getDescripcion());
-
-        // Auditoría
-        curso.setUpdateUser(profesorCorreo);
-        curso.setUpdateDate(LocalDateTime.now());
-
-        Curso updatedCurso = cursoRepository.save(curso);
-        return convertToResponse(updatedCurso);
-    }
-
-    public void eliminarCurso(Long id, String profesorCorreo) {
-        Curso curso = cursoRepository.findByIdAndActive(id)
-                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
-
-        // Verificar que sea el profesor del curso o admin
-        Usuario usuarioActual = userRepository.findByCorreoAndDeleteLogicFalse(profesorCorreo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        boolean esProfesorDelCurso = curso.getProfesor().getCorreo().equals(profesorCorreo);
-        boolean esAdmin = usuarioActual.getRoles().stream()
-                .anyMatch(rol -> rol.getNombre() == RolNombre.PROFESOR);
-
-        if (!esProfesorDelCurso && !esAdmin) {
-            throw new RuntimeException("Solo el profesor del curso o un administrador pueden eliminarlo");
-        }
-
-        // Eliminación lógica
-        curso.setDeleteLogic(true);
-        curso.setDeleteUser(profesorCorreo);
-        curso.setDeleteDate(LocalDateTime.now());
-
-        cursoRepository.save(curso);
-    }
-
-    private CursoResponse convertToResponse(Curso curso) {
-        if (curso == null) {
-            return null;
-        }
-
-        CursoResponse.ProfesorInfo profesorInfo = null;
-        if (curso.getProfesor() != null) {
-            profesorInfo = CursoResponse.ProfesorInfo.builder()
-                    .id(curso.getProfesor().getId_usuario())
-                    .nombre(curso.getProfesor().getNombre())
-                    .apellidos(curso.getProfesor().getApellido())
-                    .correo(curso.getProfesor().getCorreo())
-                    .build();
-        }
-        return CursoResponse.builder()
-                .id(curso.getId_curso())
-                .nombre(curso.getNombre_curso())
-                .descripcion(curso.getDescripcion_curso())
-                .profesor(profesorInfo)
-                .build();
+    
+    public CursoListaResponse convertirACursoListaResponse(Curso curso) {
+        return CursoListaResponse.builder()
+            .id(curso.getId())
+            .codigo(curso.getCodigo())
+            .nombre(curso.getNombre())
+            .descripcion(curso.getDescripcion())
+            .turno(curso.getTurno())
+            .seccion(curso.getSeccion())
+            .aula(curso.getAula())
+            .horario(curso.getHorario())
+            .año(curso.getAño())
+            .semestre(curso.getSemestre())
+            .periodo(curso.getPeriodo())
+            .asignatura(CursoListaResponse.AsignaturaBasica.builder()
+                .id(curso.getAsignatura().getId())
+                .codigo(curso.getAsignatura().getCodigo())
+                .nombre(curso.getAsignatura().getNombre())
+                .descripcion(curso.getAsignatura().getDescripcion())
+                .creditos(curso.getAsignatura().getCreditos())
+                .build())
+            .profesor(CursoListaResponse.ProfesorBasico.builder()
+                .id(curso.getProfesor().getId())
+                .identificacion(curso.getProfesor().getIdentificacion())
+                .nombre(curso.getProfesor().getNombre())
+                .apellidos(curso.getProfesor().getApellido())
+                .correo(curso.getProfesor().getCorreo())
+                .build())
+            .build();
     }
 }
-

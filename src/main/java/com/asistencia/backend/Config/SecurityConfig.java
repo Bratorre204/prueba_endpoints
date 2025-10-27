@@ -10,8 +10,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 @RequiredArgsConstructor
 @Configuration
 public class SecurityConfig {
@@ -26,7 +24,12 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authRequest -> authRequest
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/api/cursos/**").hasRole("PROFESOR")
+                        .requestMatchers("/api/sesiones/**").permitAll()
+                        .requestMatchers("/api/asistencia/**").permitAll()
+                        .requestMatchers("/api/cursos/**").permitAll()
+                        .requestMatchers("/api/asignaturas/**").permitAll()
+                        .requestMatchers("/api/reportes/**").permitAll()
+                        .requestMatchers("/api/usuarios/**").permitAll()
                         .requestMatchers("/api/estudiantes/**").hasRole("ESTUDIANTE")
                         .anyRequest().authenticated()
                 )

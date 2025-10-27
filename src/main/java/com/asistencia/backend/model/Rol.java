@@ -1,24 +1,28 @@
 package com.asistencia.backend.model;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-// entity/Rol.java
 @Entity
 @Table(name = "roles")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Rol extends AuditoriaEntidad{
+@EqualsAndHashCode(callSuper = false)
+public class Rol extends AuditoriaEntidad {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id_rol;
+    @Column(name = "id_rol")
+    private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(unique = true)
+    @Column(unique = true, name = "nombre")
     private RolNombre nombre;
 
     public Rol(RolNombre nombre) {

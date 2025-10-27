@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<Usuario, Integer> {
+public interface UserRepository extends JpaRepository<Usuario, Long> {
 
     // Método original
     Optional<Usuario> findByCorreo(String correo);
@@ -28,8 +28,8 @@ public interface UserRepository extends JpaRepository<Usuario, Integer> {
     java.util.List<Usuario> findAllActive();
 
     // Buscar usuario por ID y que esté activo
-    @Query("SELECT u FROM Usuario u WHERE u.id_usuario = :id AND u.deleteLogic = false")
-    Optional<Usuario> findByIdAndActive(@Param("id") Integer id);
+    @Query("SELECT u FROM Usuario u WHERE u.id = :id AND u.deleteLogic = false")
+    Optional<Usuario> findByIdAndActive(@Param("id") Long id);
 
     // Verificar si existe un correo (para registro)
     boolean existsByCorreo(String correo);
@@ -40,5 +40,5 @@ public interface UserRepository extends JpaRepository<Usuario, Integer> {
 
     // Buscar usuarios por rol (si tienes relación con roles)
     @Query("SELECT u FROM Usuario u JOIN u.roles r WHERE r.nombre = :nombreRol AND u.deleteLogic = false")
-    java.util.List<Usuario> findByRoleName(@Param("nombreRol") String nombreRol);
+    java.util.List<Usuario> findByRoleName(@Param("nombreRol") com.asistencia.backend.model.RolNombre nombreRol);
 }

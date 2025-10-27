@@ -1,6 +1,7 @@
 package com.asistencia.backend.Auth;
 
-
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +12,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LoginRequest {
-    String correo;
-    String contrasena;
-    String latitud;
+    
+    @NotBlank(message = "El correo es obligatorio")
+    @Email(message = "El formato del correo no es válido")
+    private String correo;
+    
+    @NotBlank(message = "La contraseña es obligatoria")
+    private String contrasena;
 }

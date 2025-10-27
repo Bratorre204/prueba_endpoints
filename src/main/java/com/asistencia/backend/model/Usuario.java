@@ -1,9 +1,11 @@
 package com.asistencia.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,22 +20,33 @@ import java.util.stream.Collectors;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 @Entity
 @Table(name="usuarios", uniqueConstraints = {@UniqueConstraint(columnNames = {"correo"})})
 public class Usuario extends AuditoriaEntidad implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id_usuario;
+    @Column(name = "id_usuario")
+    private Long id;
 
-    String nombre;
-    String apellido;
+    @Column(name = "nombre")
+    private String nombre;
+    
+    @Column(name = "apellido")
+    private String apellido;
 
-    @Column(nullable = false)
-    String correo;
+    @Column(nullable = false, name = "correo")
+    private String correo;
 
-    String contrasena;
-    String programa;
+    @Column(name = "contrasena")
+    private String contrasena;
+    
+    @Column(name = "programa")
+    private String programa;
+
+    @Column(name = "identificacion", unique = true, nullable = false, length = 20)
+    private String identificacion; // Cédula colombiana
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -41,6 +54,7 @@ public class Usuario extends AuditoriaEntidad implements UserDetails {
             joinColumns = @JoinColumn(name = "id_usuario"),
             inverseJoinColumns = @JoinColumn(name = "id_rol")
     )
+    @JsonBackReference("usuario-roles")
     @Builder.Default
     private Set<Rol> roles = new HashSet<>();
 

@@ -1,6 +1,5 @@
 package com.asistencia.backend.response;
 
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,9 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ApiResponse<T> {
-    private boolean status;
+public class ApiResponse {
+    private boolean success;
     private String message;
-    private T data;
-
+    private Object data;
 }

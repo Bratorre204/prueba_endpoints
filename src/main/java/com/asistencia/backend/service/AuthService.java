@@ -64,6 +64,7 @@ public class AuthService {
                 .apellido(request.getApellido())
                 .correo(request.getCorreo())
                 .contrasena(passwordEncoder.encode(request.getContrasena()))
+                .identificacion(request.getIdentificacion())
                 .programa(request.getPrograma())
                 .build();
 

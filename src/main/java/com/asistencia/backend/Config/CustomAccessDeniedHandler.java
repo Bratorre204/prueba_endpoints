@@ -18,8 +18,13 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
                        AccessDeniedException accessDeniedException)
             throws IOException, ServletException {
 
+        // Log the error for debugging
+        System.out.println("Access denied for URI: " + request.getRequestURI());
+        System.out.println("Method: " + request.getMethod());
+        System.out.println("Exception: " + accessDeniedException.getMessage());
+
         response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403
         response.setContentType("application/json");
-        response.getWriter().write("{\"error\": \"No tienes permisos para acceder a este recurso\"}");
+        response.getWriter().write("{\"error\": \"No tienes permisos para acceder a este recurso\", \"uri\": \"" + request.getRequestURI() + "\", \"method\": \"" + request.getMethod() + "\"}");
     }
 }
