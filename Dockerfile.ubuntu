@@ -1,5 +1,16 @@
-# Dockerfile simple y confiable usando imagen oficial de Spring Boot
-FROM gradle:8.5-jdk21-alpine AS builder
+# Dockerfile alternativo usando imágenes Ubuntu con OpenJDK
+FROM ubuntu:22.04 AS builder
+
+# Instalar OpenJDK 21 y herramientas necesarias
+RUN apt-get update && apt-get install -y \
+    openjdk-21-jdk \
+    curl \
+    wget \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Establecer JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
 # Establecer directorio de trabajo
 WORKDIR /app
@@ -22,14 +33,20 @@ COPY src src
 # Construir la aplicación
 RUN ./gradlew build --no-daemon -x test
 
-# Imagen de producción usando Eclipse Temurin (más confiable)
-FROM eclipse-temurin:21-jre-alpine
+# Imagen de producción más ligera
+FROM ubuntu:22.04
 
-# Instalar herramientas básicas
-RUN apk add --no-cache curl bash
+# Instalar OpenJDK 21 JRE y herramientas básicas
+RUN apt-get update && apt-get install -y \
+    openjdk-21-jre-headless \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Establecer JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
 # Crear usuario no-root para seguridad
-RUN addgroup -g 1001 -S appuser && adduser -S appuser -u 1001
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Establecer directorio de trabajo
 WORKDIR /app
